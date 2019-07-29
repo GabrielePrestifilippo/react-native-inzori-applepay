@@ -1,0 +1,32 @@
+{
+  "name": "react-native-inzori-applepay",
+  "version": "0.1.8-RC2",
+  "description": "React Native module to handle PassKit.",
+  "main": "index",
+  "homepage": "https://trkfabi@bitbucket.org/trkfabi/react-native-inzori-applepay/src",
+  "scripts": {
+    "lint": "eslint .",
+    "flow": "flow --show-all-errors",
+    "test": "npm run lint"
+  },
+  "keywords": [
+    "react-native",
+    "ios",
+    "PassKit",
+    "Wallet"
+  ],
+  "author": "Inzori (https://inzori.com)",
+  "license": "MIT",
+  "devDependencies": {
+    "babel-eslint": "^10.0.1",
+    "babel-preset-flow": "^6.23.0",
+    "babel-preset-react-native": "^5.0.2",
+    "eslint": "^5.13.0",
+    "eslint-plugin-flowtype": "^2.38.0",
+    "eslint-plugin-react": "^7.13.0",
+    "flow-bin": "^0.86.0",
+    "prop-types": "^15.6.2",
+    "react": "^16.8.3",
+    "react-native": "^0.59.2"
+  }
+}
