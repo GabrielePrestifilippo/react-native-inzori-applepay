@@ -1,9 +1,9 @@
 {
   "name": "react-native-inzori-applepay",
-  "version": "0.1.8-RC2",
+  "homepage": "https://trkfabi@bitbucket.org/trkfabi/react-native-inzori-applepay",
+  "version": "0.1.8",
   "description": "React Native module to handle PassKit.",
   "main": "index",
-  "homepage": "https://trkfabi@bitbucket.org/trkfabi/react-native-inzori-applepay/src",
   "scripts": {
     "lint": "eslint .",
     "flow": "flow --show-all-errors",
