@@ -93,8 +93,8 @@ RCT_EXPORT_METHOD(canAddCard:(NSString *)card
 }
 
 RCT_EXPORT_METHOD(isCardInWallet:(NSString *)card
-    reolver:(RCTPromiseResolveBlock)resolve
-    rejector:(RCTPromiseRejectBlock)reject) {
+    resolve:(RCTPromiseResolveBlock)resolve
+    reject:(RCTPromiseRejectBlock)reject) {
 
     PKPassLibrary *library = [[PKPassLibrary alloc] init];
     if (![library canAddPaymentPassWithPrimaryAccountIdentifier:card]) {
