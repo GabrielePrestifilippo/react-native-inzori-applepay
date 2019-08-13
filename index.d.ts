@@ -8,6 +8,7 @@ declare class PassKit {
 
   static isAvailable(): Promise<boolean>;
   static canAddCard(card: string): Promise<boolean>;
+  static isCardInWallet(card: string): Promise<boolean>;
   static getUUID(): Promise<string>;
   static presentAddPaymentPassViewController(args: Object): Promise<void>;
 
