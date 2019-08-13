@@ -92,6 +92,28 @@ RCT_EXPORT_METHOD(canAddCard:(NSString *)card
     resolve(@([library canAddPaymentPassWithPrimaryAccountIdentifier:card]));  
 }
 
+RCT_EXPORT_METHOD(isCardInWallet:(NSString *)card
+    reolver:(RCTPromiseResolveBlock)resolve
+    rejector:(RCTPromiseRejectBlock)reject) {
+
+    PKPassLibrary *library = [[PKPassLibrary alloc] init];
+    if (![library canAddPaymentPassWithPrimaryAccountIdentifier:card]) {
+        // If the card cannot be added to the wallet, there is no way we can find it there.
+        resolve(@NO);
+        return;
+    }
+    NSArray* passes = [library passesOfType:PKPassTypePayment];
+    for (int i=0; i < [passes count]; i++) {
+        PKPaymentPass* pass = [passes objectAtIndex:i];
+        NSString* suffix = pass.primaryAccountNumberSuffix;
+        if ([suffix isEqualToString:card]) {
+            resolve(@YES);
+            return;
+        }
+    }
+    resolve(@NO);
+}
+
 RCT_EXPORT_METHOD(getUUID:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject) {
 
