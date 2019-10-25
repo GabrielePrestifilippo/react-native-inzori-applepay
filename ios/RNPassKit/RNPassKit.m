@@ -25,7 +25,7 @@ RCT_EXPORT_METHOD(addPass:(NSString *)base64Encoded
     reject(@"", @"Failed to create pass.", error);
     return;
   }
-  
+
   dispatch_async(dispatch_get_main_queue(), ^{
     UIApplication *sharedApplication = RCTSharedApplication();
     UIWindow *window = sharedApplication.keyWindow;
@@ -41,7 +41,7 @@ RCT_EXPORT_METHOD(addPass:(NSString *)base64Encoded
         return;
       }
     }
-    
+
     reject(@"", @"Failed to present PKAddPassesViewController.", nil);
   });
 }
@@ -49,7 +49,7 @@ RCT_EXPORT_METHOD(addPass:(NSString *)base64Encoded
 - (NSDictionary *)constantsToExport {
   PKAddPassButton *addPassButton = [[PKAddPassButton alloc] initWithAddPassButtonStyle:PKAddPassButtonStyleBlack];
   [addPassButton layoutIfNeeded];
-  
+
   return @{
            @"AddPassButtonStyle": @{
                @"black": @(PKAddPassButtonStyleBlack),
@@ -89,7 +89,7 @@ RCT_EXPORT_METHOD(canAddCard:(NSString *)card
     rejector:(RCTPromiseRejectBlock)reject) {
 
     PKPassLibrary *library = [[PKPassLibrary alloc] init];
-    resolve(@([library canAddPaymentPassWithPrimaryAccountIdentifier:card]));  
+    resolve(@([library canAddPaymentPassWithPrimaryAccountIdentifier:card]));
 }
 
 RCT_EXPORT_METHOD(isCardInWallet:(NSString *)card
@@ -118,7 +118,7 @@ RCT_EXPORT_METHOD(getUUID:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject) {
 
     NSString *uuid = [[NSUUID UUID] UUIDString];
-    
+
     NSDictionary *keychainItem = @{
                                    (__bridge id)kSecClass : (__bridge id)kSecClassGenericPassword,
                                    (__bridge id)kSecAttrAccessible : (__bridge id)kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
@@ -126,26 +126,26 @@ RCT_EXPORT_METHOD(getUUID:(RCTPromiseResolveBlock)resolve
                                    (__bridge id)kSecValueData : [uuid dataUsingEncoding:NSUTF8StringEncoding],
                                    (__bridge id)kSecReturnData : (__bridge id)kCFBooleanTrue,
                                    };
-    
+
     CFDataRef result = nil;
     if (SecItemCopyMatching((__bridge CFDictionaryRef)keychainItem, (CFTypeRef *)&result) == noErr) {
         NSData *uuidData = (__bridge NSData *)result;
         uuid = [[NSString alloc] initWithData:uuidData encoding:NSUTF8StringEncoding];
-        
+
         CFRelease(result);
     } else {
         OSStatus status = SecItemAdd((__bridge CFDictionaryRef)keychainItem, NULL);
     }
-    
+
     resolve(uuid);
 }
 
-RCT_EXPORT_METHOD(presentAddPaymentPassViewController: (NSDictionary *)args 
-    resolver:(RCTPromiseResolveBlock)resolve 
+RCT_EXPORT_METHOD(presentAddPaymentPassViewController: (NSDictionary *)args
+    resolver:(RCTPromiseResolveBlock)resolve
     rejecter:(RCTPromiseRejectBlock)reject) {
 
     PKAddPaymentPassRequestConfiguration *configuration = [[PKAddPaymentPassRequestConfiguration alloc] initWithEncryptionScheme:PKEncryptionSchemeECC_V2];
-    
+
     self.cardholderName = args[@"cardholderName"];
     self.localizedDescription = args[@"localizedDescription"];
     switch ([args[@"paymentNetwork"] intValue]) {
@@ -167,11 +167,12 @@ RCT_EXPORT_METHOD(presentAddPaymentPassViewController: (NSDictionary *)args
         default:
             self.paymentNetwork = nil;
             break;
-    }    
+    }
     self.primaryAccountSuffix = args[@"primaryAccountSuffix"];
     self.primaryAccountIdentifier = args[@"primaryAccountIdentifier"];
     self.apiEndpoint = args[@"apiEndpoint"];
     self.authorization = args[@"authorization"];
+    self.cookie = args[@"cookie"];
     self.userName = args[@"userName"];
 
     configuration.cardholderName = self.cardholderName;
@@ -189,7 +190,7 @@ RCT_EXPORT_METHOD(presentAddPaymentPassViewController: (NSDictionary *)args
         if (window) {
           UIViewController *rootViewController = window.rootViewController;
           if (rootViewController) {
-           
+
             [rootViewController presentViewController:passView animated:YES completion:^{
               // Succeeded
                 [self sendEventWithName:@"addToWalletViewShown" body:@{
@@ -198,13 +199,13 @@ RCT_EXPORT_METHOD(presentAddPaymentPassViewController: (NSDictionary *)args
 
                 resolve(nil);
                 return;
-            }];            
+            }];
 
           }
         }
       });
 
-        
+
     } else {
 
         [self sendEventWithName:@"addToWalletViewCreationError" body:nil];
@@ -227,15 +228,24 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
     NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:apiEndpointURL];
     request.HTTPMethod = @"POST";
     request.timeoutInterval = 19.0;
-    [request setAllHTTPHeaderFields:@{
-                                      @"content-type" : @"application/x-www-form-urlencoded",
-                                      @"authorization" : self.authorization,
-                                      }];
 
-    
+    if(![self.authorization isEqual:[NSNull null]]) {
+        NSLog(@"[INFO] Authorization found");
+        [request setAllHTTPHeaderFields:@{
+                                          @"content-type" : @"application/x-www-form-urlencoded",
+                                          @"authorization" : self.authorization,
+                                          }];
+    } else if(![self.cookie isEqual:[NSNull null]]) {
+        NSLog(@"[INFO] No authorization found, using cookie");
+        [request setAllHTTPHeaderFields:@{
+                                          @"content-type" : @"application/x-www-form-urlencoded",
+                                          @"Cookie" : self.cookie,
+                                          }];
+    }
+
     NSData *noncePrefix = [@"&Nonce=" dataUsingEncoding:NSUTF8StringEncoding];
     NSData *nonceHex = [self dataToHexData:nonce];
-    
+
     NSData *nonceSignaturePrefix = [@"&NonceSignature=" dataUsingEncoding:NSUTF8StringEncoding];
     NSData *nonceSignatureHex = [self dataToHexData:nonceSignature];
 
@@ -248,28 +258,28 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
     NSData *userNamePrefix;
     NSData *userNameHex;
 
-    if(![self.userName isEqual:[NSNull null]]) {      
+    if(![self.userName isEqual:[NSNull null]]) {
         userNamePrefix = [@"&Username=" dataUsingEncoding:NSUTF8StringEncoding];
         userNameHex = [self.userName dataUsingEncoding:NSUTF8StringEncoding];
     }
-        
+
     dispatch_queue_t queue = dispatch_get_global_queue(0, 0);
 
     dispatch_data_t dispatch_data_noncePrefix = dispatch_data_create(noncePrefix.bytes, noncePrefix.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
     dispatch_data_t dispatch_data_nonce = dispatch_data_create(nonceHex.bytes, nonceHex.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-    
+
     dispatch_data_t dispatch_data_nonceSignaturePrefix = dispatch_data_create(nonceSignaturePrefix.bytes, nonceSignaturePrefix.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
     dispatch_data_t dispatch_data_nonceSignature = dispatch_data_create(nonceSignatureHex.bytes, nonceSignatureHex.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-    
+
     dispatch_data_t dispatch_data_leafCertificatePrefix = dispatch_data_create(leafCertificatePrefix.bytes, leafCertificatePrefix.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
     dispatch_data_t dispatch_data_leafCertificate = dispatch_data_create(leafCertificateHex.bytes, leafCertificateHex.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-    
+
     dispatch_data_t dispatch_data_subCACertificatePrefix = dispatch_data_create(subCACertificatePrefix.bytes, subCACertificatePrefix.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
     dispatch_data_t dispatch_data_subCACertificate = dispatch_data_create(subCACertificateHex.bytes, subCACertificateHex.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
-    
+
     dispatch_data_t dispatch_data_userNamePrefix;
     dispatch_data_t dispatch_data_userName;
-    
+
     if (self.userName != nil) {
         dispatch_data_userNamePrefix = dispatch_data_create(userNamePrefix.bytes, userNamePrefix.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
         dispatch_data_userName = dispatch_data_create(userNameHex.bytes, userNameHex.length, queue, DISPATCH_DATA_DESTRUCTOR_DEFAULT);
@@ -278,37 +288,37 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
     noncePrefix = nil;
     nonce = nil;
     nonceHex = nil;
-    
+
     nonceSignaturePrefix = nil;
     nonceSignature = nil;
     nonceSignatureHex = nil;
-    
+
     leafCertificatePrefix = nil;
     leafCertificateHex = nil;
     subCACertificatePrefix = nil;
     subCACertificateHex = nil;
     certificates = nil;
-    
+
     userNamePrefix = nil;
     userNameHex = nil;
-    
+
     dispatch_data_t dispatch_data_concat = dispatch_data_create_concat(dispatch_data_noncePrefix, dispatch_data_nonce);
-    
+
     dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_nonceSignaturePrefix);
     dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_nonceSignature);
-    
+
     dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_leafCertificatePrefix);
     dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_leafCertificate);
-    
+
     dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_subCACertificatePrefix);
     dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_subCACertificate);
-    
+
     if (self.userName != nil) {
         dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_userNamePrefix);
         dispatch_data_concat = dispatch_data_create_concat(dispatch_data_concat, dispatch_data_userName);
     }
-    
-    
+
+
     NSMutableData *postData = [NSMutableData dataWithCapacity: dispatch_data_get_size(dispatch_data_concat)];
     dispatch_data_apply(dispatch_data_concat, ^(dispatch_data_t region, size_t offset, const void *buffer, size_t size) {
         [postData appendBytes:buffer length:size];
@@ -316,7 +326,7 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
     });
 
     [request setHTTPBody:postData];
-    
+
 
     NSURLSession *session = [NSURLSession sharedSession];
     NSURLSessionDataTask *dataTask = [session dataTaskWithRequest:request
@@ -328,7 +338,7 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
             NSLog(@"response: %@", response);
 
             NSError *processError = error;
-            
+
             if (processError == nil && data != nil) {
                 id response = [NSJSONSerialization JSONObjectWithData:data
                                                                   options:0
@@ -337,7 +347,7 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
                 if (processError == nil && [response isKindOfClass:[NSDictionary class]]) {
                     NSDictionary *json = response;
                     id dataElm = json[@"Data"];
-                    
+
                     if ([dataElm isKindOfClass:[NSDictionary class]]) {
                         NSString *encryptedPassData = dataElm[@"CipherText"];
                         //NSLog(@"[INFO] In module - EncryptedPassData (CipherText): %@\n__________________________________To data: %@", encryptedPassData, [self hexStringToData:encryptedPassData]);
@@ -345,23 +355,23 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
                         //NSLog(@"[INFO] In module - ActivationData (TokenizationAuthenticationValue): %@\n____________________________________________________To data: %@", activationData, [self hexStringToData:activationData]);
                         NSString *ephemeralPublicKey = dataElm[@"EphemeralPublicKey"];
                         //NSLog(@"[INFO] In module - EphemeralPublicKey (EphemeralPublicKey): %@\n___________________________________________To data: %@", ephemeralPublicKey, [self hexStringToData:ephemeralPublicKey]);
-                        
+
                         if (encryptedPassData != nil && activationData != nil && ephemeralPublicKey != nil) {
                             PKAddPaymentPassRequest *paymentPassRequest = [[PKAddPaymentPassRequest alloc] init];
-                            
+
                             if (paymentPassRequest != nil) {
                                 paymentPassRequest.activationData = [self hexStringToData:activationData];
                                 paymentPassRequest.encryptedPassData = [self hexStringToData:encryptedPassData];
                                 paymentPassRequest.ephemeralPublicKey = [self hexStringToData:ephemeralPublicKey];
                             }
-                            NSLog(@"in module paymentPassRequest: %@", paymentPassRequest); 
+                            NSLog(@"in module paymentPassRequest: %@", paymentPassRequest);
                             handler(paymentPassRequest);
                             return;
                         }
                     }
                 }
             }
-            
+
             // This will only be reached if no return above. This means an error occured.
             handler(nil);
             if (processError != nil) {
@@ -369,15 +379,15 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
                                         @"code" : @([processError code]),
                                         @"message" : [processError localizedDescription],
                                         }];
-                
+
             } else {
-                
+
                 [self sendEventWithName:@"addingPassFailed" body:nil];
             }
         }];
-    
+
     [dataTask resume];
-    
+
 }
 
 -(void)addPaymentPassViewController:(PKAddPaymentPassViewController *)controller
@@ -390,7 +400,7 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
     NSLog(@"error: %@", error);
 
     if (pass != nil) {
-        
+
         [self sendEventWithName:@"addingPassSucceeded" body:nil];
     } else {
 
@@ -399,13 +409,13 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
                                        @"code" : @([error code]),
                                     @"message" : [error localizedDescription],
                                     }];
-            
+
         } else {
             [self sendEventWithName:@"addingPassFailed" body:nil];
         }
     }
-    
-    
+
+
     [controller dismissViewControllerAnimated:YES
                                    completion:^() {
                                        //[controller release];
@@ -422,11 +432,11 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
     char *hexChars = malloc(sizeof(char) * length * 2);
     register UInt16 *destination = ((UInt16 *)hexChars) + length - 1;
     register const unsigned char *source = (const unsigned char *)data.bytes + length - 1;
-    
+
     while (length-- != 0) {
         *destination-- = mapping[*source--];
     }
-    
+
     NSData *hexData = [[NSData alloc] initWithBytesNoCopy:hexChars
                                                    length:(data.length * 2)
                                              freeWhenDone:YES];
@@ -444,7 +454,7 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
     char *dataBytes = malloc(sizeof(char) * length / 2);
     register char *destination = dataBytes + (length / 2) - 1;
     register const char *source = hexChars + length - 1;
-    
+
     length /= 2;
     while (length-- != 0) {
         *destination = *source > '9' ? (*source & 0x0F) + 9 : *source & 0x0F;
@@ -452,7 +462,7 @@ generateRequestWithCertificateChain:(NSArray<NSData *> *)certificates
         *destination-- |= *source > '9' ? (*source + 9) << 4 : *source << 4;
         source--;
     }
-    
+
     NSData *data = [[NSData alloc] initWithBytesNoCopy:dataBytes
                                                 length:(hexString.length / 2)
                                           freeWhenDone:YES];

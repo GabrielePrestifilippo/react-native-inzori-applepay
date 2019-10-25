@@ -15,6 +15,7 @@
 @property (nonatomic, retain) NSString *primaryAccountSuffix;
 @property (nonatomic, retain) NSString *apiEndpoint;
 @property (nonatomic, retain) NSString *authorization;
+@property (nonatomic, retain) NSString *cookie;
 @property (nonatomic, retain) NSString *userName;
 
 @end

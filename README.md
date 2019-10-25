@@ -152,7 +152,8 @@ export default class App extends Component<Props> {
           paymentNetwork: 2,
           primaryAccountSuffix: '3543',
           primaryAccountIdentifier:'',
-          authorization:'Bearer AiZlAPCLRMOhNE299bKzdg',
+          authorization:'Bearer AiZlAPCLRMOhNE299bKzdg', // this is mutually exclusive with cookie
+          cookie:'Cookie1 xyz',  // this is mutually exclusive with authorization
           userName: null
         }).then((result) => {console.log('done');});
       }}
